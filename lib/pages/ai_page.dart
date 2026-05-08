@@ -50,18 +50,19 @@ MEMORIES:
 {{memory_list}}''';
   LiteLmEngine? engine;
   LiteLmConversation? conversation;
-
+  bool isGenerating = false;
   bool isLoading = true;
   var prompt = TextEditingController();
   var response = "";
   void showResponse(String resp) {
     setState(() {
       response = resp;
+      isGenerating = false;
     });
   }
 
   bool isDeeperSearch = false;
-
+  bool isPermissionGranted = true;
   Future<void> requestPermission() async {
     var status = await Permission.manageExternalStorage.request();
 
@@ -71,6 +72,9 @@ MEMORIES:
 
     if (status.isDenied) {
       print("Permission Denied");
+      setState(() {
+        isPermissionGranted = false;
+      });
     }
 
     if (status.isPermanentlyDenied) {
@@ -222,6 +226,54 @@ MEMORIES:
               style: TextStyle(color: Colors.white),
             ),
           ),
+          isPermissionGranted
+              ? SizedBox.shrink()
+              : IconButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text("File Permission not Allowed"),
+                          // content: RichText(
+                          //   // "Please Allow File Permission to 'Allow management of all files' in Settings",
+                          // ),
+                          content: RichText(
+                            text: TextSpan(
+                              style: TextStyle(color: Colors.black),
+                              children: [
+                                TextSpan(
+                                  text:
+                                      "Please Allow File Permission and set it to: ",
+                                ),
+                                TextSpan(
+                                  text: "'Allow management of all files' ",
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                TextSpan(text: "in Settings."),
+                              ],
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(context);
+                              },
+                              child: const Text('Close'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                openAppSettings();
+                              },
+                              child: Text("Setting"),
+                            ),
+                          ],
+                        );
+                      },
+                    );
+                  },
+                  icon: Icon(Icons.error_outline, color: Colors.red),
+                ),
         ],
         backgroundColor: const Color(0xFF093176),
       ),
@@ -230,6 +282,7 @@ MEMORIES:
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: TextFormField(
@@ -241,9 +294,12 @@ MEMORIES:
               ),
             ),
             ElevatedButton(
-              onPressed: isLoading
+              onPressed: isLoading | isGenerating
                   ? null
                   : () async {
+                      setState(() {
+                        isGenerating = true;
+                      });
                       if (prompt.text != "") {
                         if (isLoading || conversation == null) {
                           showResponse("Model still loading...");
@@ -334,10 +390,28 @@ MEMORIES:
                     },
               child: Text(isLoading ? "Loading model..." : "Send"),
             ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: SelectableText(response, style: TextStyle(fontSize: 20)),
-            ),
+            isGenerating
+                ? Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      "Generating...",
+                      style: TextStyle(fontSize: 20),
+                    ),
+                  )
+                : response == ""
+                ? SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.all(2.0),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: SelectableText(
+                          response,
+                          style: TextStyle(fontSize: 20),
+                        ),
+                      ),
+                    ),
+                  ),
             isDeeperSearch
                 ? Column(
                     children: [
