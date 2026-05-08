@@ -4,6 +4,7 @@ import 'package:cachy/widget/create_memory_dialog.dart';
 import 'package:cachy/widget/delete_conform_dialog.dart';
 import 'package:cachy/widget/memory_detail.dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class DatabasePage extends StatefulWidget {
   const DatabasePage({super.key});
@@ -72,7 +73,8 @@ class _DatabasePageState extends State<DatabasePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("MEMORIES"),
+        title: Text("MEMORIES", style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF093176),
         actions: [
           IconButton(
             onPressed: () {
@@ -80,13 +82,14 @@ class _DatabasePageState extends State<DatabasePage> {
                 showSearchBar = !showSearchBar;
               });
             },
-            icon: Icon(Icons.search_rounded),
+            icon: Icon(Icons.search_rounded, color: Colors.white),
           ),
           IconButton(
+            tooltip: "Reload",
             onPressed: () {
               refreshMemories();
             },
-            icon: Icon(Icons.refresh_rounded),
+            icon: Icon(Icons.refresh_rounded, color: Colors.white),
           ),
         ],
       ),
@@ -94,7 +97,7 @@ class _DatabasePageState extends State<DatabasePage> {
         children: [
           if (showSearchBar)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               child: SearchBar(
                 controller: searchController,
                 autoFocus: true,
@@ -130,7 +133,9 @@ class _DatabasePageState extends State<DatabasePage> {
                           memories[index].data,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        subtitle: Text("${memories[index].time}"),
+                        subtitle: Text(
+                          "${DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time))}",
+                        ),
                         trailing: IconButton(
                           onPressed: () {
                             showDialog(

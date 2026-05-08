@@ -62,6 +62,34 @@ class DatabaseHelper {
     return await db.delete('memories', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<List<Memories>> searchMemories(List<String> keywords) async {
+    final db = await instance.database;
+
+    if (keywords.isEmpty) {
+      return [];
+    }
+
+    final whereClause = keywords.map((_) => 'data LIKE ?').join(' OR ');
+
+    final whereArgs = keywords.map((keyword) => '%$keyword%').toList();
+
+    final result = await db.query(
+      'memories',
+      where: whereClause,
+      whereArgs: whereArgs,
+    );
+
+    return result.map((json) => Memories.fromMap(json)).toList();
+  }
+
+  Future<int> getMemoriesCount() async {
+    final db = await instance.database;
+
+    final result = await db.rawQuery('SELECT COUNT(*) as count FROM memories');
+
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
   Future close() async {
     final db = await instance.database;
 
