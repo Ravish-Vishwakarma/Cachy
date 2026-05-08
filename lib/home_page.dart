@@ -13,7 +13,10 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
 
-  final List<Widget> pages = [AIPage(), DatabasePage()];
+  @override
+  void initState() {
+    super.initState();
+  }
 
   void changePage(int index) {
     setState(() {
@@ -28,7 +31,10 @@ class _HomePageState extends State<HomePage> {
         currentIndex: selectedIndex,
         onTap: changePage,
       ),
-      body: pages[selectedIndex],
+      body: IndexedStack(
+        index: selectedIndex,
+        children: const [AIPage(), DatabasePage()],
+      ),
     );
   }
 }

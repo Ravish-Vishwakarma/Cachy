@@ -91,42 +91,44 @@ class _AIPageState extends State<AIPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextFormField(
-              controller: prompt,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(),
-                label: Text("Prompt"),
+      body: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextFormField(
+                controller: prompt,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(),
+                  label: Text("Prompt"),
+                ),
               ),
             ),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (isLoading || conversation == null) {
-                showResponse("Model still loading...");
-                return;
-              }
+            ElevatedButton(
+              onPressed: () async {
+                if (isLoading || conversation == null) {
+                  showResponse("Model still loading...");
+                  return;
+                }
 
-              try {
-                final reply = await conversation!.sendMessage(prompt.text);
+                try {
+                  final reply = await conversation!.sendMessage(prompt.text);
 
-                showResponse(reply.text);
-              } catch (e) {
-                showResponse(e.toString());
-              }
-            },
-            child: Text(isLoading ? "Loading model..." : "Send"),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Text(isLoading ? "Loading model..." : response),
-          ),
-        ],
+                  showResponse(reply.text);
+                } catch (e) {
+                  showResponse(e.toString());
+                }
+              },
+              child: Text(isLoading ? "Loading model..." : "Send"),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(isLoading ? "Loading model..." : response),
+            ),
+          ],
+        ),
       ),
     );
   }
