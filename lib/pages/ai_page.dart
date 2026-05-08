@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class AIPage extends StatefulWidget {
   const AIPage({super.key});
@@ -21,6 +22,22 @@ class _AIPageState extends State<AIPage> {
     setState(() {
       response = resp;
     });
+  }
+
+  Future<void> requestPermission() async {
+    var status = await Permission.manageExternalStorage.request();
+
+    if (status.isGranted) {
+      print("Permission Granted");
+    }
+
+    if (status.isDenied) {
+      print("Permission Denied");
+    }
+
+    if (status.isPermanentlyDenied) {
+      openAppSettings();
+    }
   }
 
   Future<void> loadModel() async {
@@ -67,6 +84,7 @@ class _AIPageState extends State<AIPage> {
   @override
   void initState() {
     super.initState();
+    requestPermission();
     loadModel();
   }
 
