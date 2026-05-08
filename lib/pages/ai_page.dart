@@ -1,17 +1,16 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 import 'package:path_provider/path_provider.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class AIPage extends StatefulWidget {
+  const AIPage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<AIPage> createState() => _AIPageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _AIPageState extends State<AIPage> {
   LiteLmEngine? engine;
   LiteLmConversation? conversation;
 
@@ -74,7 +73,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Cachy")),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -83,7 +81,6 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.all(8.0),
             child: TextFormField(
               controller: prompt,
-              maxLines: null,
               decoration: InputDecoration(
                 border: OutlineInputBorder(),
                 label: Text("Prompt"),
