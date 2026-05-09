@@ -1,4 +1,4 @@
-import 'package:cachy/components/bottom_nav_bar.dart';
+import 'package:cachy/widget/bottom_nav_bar.dart';
 import 'package:cachy/pages/ai_page.dart';
 import 'package:cachy/pages/memories_page.dart';
 import 'package:flutter/material.dart';

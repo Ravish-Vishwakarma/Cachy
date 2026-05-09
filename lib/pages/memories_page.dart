@@ -34,7 +34,7 @@ class _DatabasePageState extends State<DatabasePage> {
     });
   }
 
-  void loadMemories() async {
+  Future<void> loadMemories() async {
     final data = await db.getMemories();
 
     setState(() {
@@ -52,12 +52,12 @@ class _DatabasePageState extends State<DatabasePage> {
     });
   }
 
-  void refreshMemories() {
+  Future<void> refreshMemories() async {
     searchController.clear();
     setState(() {
       showSearchBar = false;
     });
-    loadMemories();
+    await loadMemories();
   }
 
   @override
@@ -93,86 +93,94 @@ class _DatabasePageState extends State<DatabasePage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (showSearchBar)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-              child: SearchBar(
-                controller: searchController,
-                autoFocus: true,
-                padding: const WidgetStatePropertyAll<EdgeInsets>(
-                  EdgeInsets.symmetric(horizontal: 16.0),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await refreshMemories();
+        },
+        child: Column(
+          children: [
+            if (showSearchBar)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 10,
                 ),
-                leading: Icon(Icons.search_rounded),
-                hintText: "Search Memories",
-                onChanged: (value) {
-                  searchMemories(value);
-                },
+                child: SearchBar(
+                  controller: searchController,
+                  autoFocus: true,
+                  padding: const WidgetStatePropertyAll<EdgeInsets>(
+                    EdgeInsets.symmetric(horizontal: 16.0),
+                  ),
+                  leading: Icon(Icons.search_rounded),
+                  hintText: "Search Memories",
+                  onChanged: (value) {
+                    searchMemories(value);
+                  },
+                ),
               ),
-            ),
-          Expanded(
-            child: memories.isNotEmpty
-                ? ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 100),
-                    itemCount: memories.length, // Total number of items
-                    itemBuilder: (BuildContext context, int index) {
-                      return ListTile(
-                        onTap: () {
-                          showDialog(
-                            context: context,
-                            builder: (context) {
-                              return MemoryDetailDialog(
-                                memory: memories[index],
-                              );
-                            },
-                          );
-                        },
-
-                        title: Text(
-                          memories[index].data,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          "${DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time))}",
-                        ),
-                        trailing: IconButton(
-                          onPressed: () {
+            Expanded(
+              child: memories.isNotEmpty
+                  ? ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 100),
+                      itemCount: memories.length, // Total number of items
+                      itemBuilder: (BuildContext context, int index) {
+                        return ListTile(
+                          onTap: () {
                             showDialog(
                               context: context,
                               builder: (context) {
-                                return DeleteConformDialog(
-                                  onDelete: () {
-                                    deleteMemory(memories[index].id, index);
-                                  },
+                                return MemoryDetailDialog(
+                                  memory: memories[index],
                                 );
                               },
                             );
                           },
-                          icon: Icon(
-                            Icons.delete_rounded,
-                            color: Colors.red[400],
+
+                          title: Text(
+                            memories[index].data,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      );
-                    },
-                  )
-                : Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text("No Result", style: TextStyle(fontSize: 20)),
-                        TextButton(
-                          onPressed: () {
-                            refreshMemories();
-                          },
-                          child: Text("Clear"),
-                        ),
-                      ],
+                          subtitle: Text(
+                            "${DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time))}",
+                          ),
+                          trailing: IconButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) {
+                                  return DeleteConformDialog(
+                                    onDelete: () {
+                                      deleteMemory(memories[index].id, index);
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                            icon: Icon(
+                              Icons.delete_rounded,
+                              color: Colors.red[400],
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("No Result", style: TextStyle(fontSize: 20)),
+                          TextButton(
+                            onPressed: () {
+                              refreshMemories();
+                            },
+                            child: Text("Clear"),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {

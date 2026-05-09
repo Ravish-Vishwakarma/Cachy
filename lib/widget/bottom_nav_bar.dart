@@ -21,7 +21,10 @@ class _MyBottomNavBarState extends State<MyBottomNavBar> {
       currentIndex: widget.currentIndex,
       onTap: widget.onTap,
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: "Home"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.auto_awesome_rounded),
+          label: "AI",
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.list_rounded), label: "List"),
       ],
     );

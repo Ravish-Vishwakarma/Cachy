@@ -150,7 +150,7 @@ MEMORIES:
     }
   }
 
-  List<String> splitIntoChunks(String text, {int maxLength = 2000}) {
+  List<String> splitIntoChunks(String text, {int maxLength = 10000}) {
     List<String> chunks = [];
 
     while (text.isNotEmpty) {
@@ -326,7 +326,8 @@ MEMORIES:
                           if (requestType["type"].toLowerCase() == "read") {
                             final memories = await db.getMemories();
                             final allmemo = await getMemoriesString(memories);
-                            if (allmemo.length < 3000) {
+
+                            if (allmemo.length < 15000) {
                               print("length is okay");
                               final filterPrompt = memoryFindingPrompt
                                   .replaceFirst("{{memory_list}}", "${allmemo}")
@@ -343,7 +344,7 @@ MEMORIES:
 
                               showResponse(filteredMemory["response"]);
                             } else {
-                              print("using above 3000 technique");
+                              print("using above 15,000 technique");
                               final searchKeywords = requestType["data"].split(
                                 " ",
                               );
