@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cachy/database/database_helper.dart';
 import 'package:cachy/model/memories_model.dart';
 import 'package:cachy/widget/snackbar_message.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 import 'package:path_provider/path_provider.dart';
@@ -59,10 +60,13 @@ MEMORIES:
       response = resp;
       isGenerating = false;
     });
+    prompt.clear();
   }
 
   bool isDeeperSearch = false;
   bool isPermissionGranted = true;
+  bool isModelDownloaded = true;
+  bool isDownloading = false;
   Future<void> requestPermission() async {
     var status = await Permission.manageExternalStorage.request();
 
@@ -145,8 +149,57 @@ MEMORIES:
       setState(() {
         isLoading = false;
       });
+      // showResponse(e.toString());
 
-      showResponse(e.toString());
+      if (e.toString().contains("PathNotFoundException: Cannot copy file to")) {
+        showResponse("Model Not Downloaded");
+        setState(() {
+          isModelDownloaded = false;
+        });
+      }
+    }
+  }
+
+  Future<void> downloadModel() async {
+    setState(() {
+      isDownloading = true;
+    });
+    final appDir = await getApplicationDocumentsDirectory();
+
+    final localModelPath = "${appDir.path}/gemma-4-E2B-it.litertlm";
+
+    const modelUrl =
+        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm";
+
+    final dio = Dio();
+
+    try {
+      print("Downloading to:");
+      print(localModelPath);
+
+      await dio.download(
+        modelUrl,
+        localModelPath,
+
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            final progress = (received / total * 100).toStringAsFixed(0);
+
+            // print("Progress: $progress%");
+            showResponse("Downloaded: ${progress}%");
+          }
+        },
+
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          receiveTimeout: const Duration(hours: 2),
+        ),
+      );
+
+      print("Download complete!");
+    } catch (e) {
+      print("Download failed: $e");
     }
   }
 
@@ -283,114 +336,123 @@ MEMORIES:
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: TextFormField(
-                controller: prompt,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  label: Text("Prompt"),
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: isLoading | isGenerating
-                  ? null
-                  : () async {
-                      setState(() {
-                        isGenerating = true;
-                      });
-                      if (prompt.text != "") {
-                        if (isLoading || conversation == null) {
-                          showResponse("Model still loading...");
-                          return;
-                        }
-                        final structuredPrompt =
-                            "${classificationPrompt}${prompt.text}";
-                        try {
-                          final reply = await conversation!.sendMessage(
-                            structuredPrompt,
-                          );
-                          final requestType = jsonifyResponse(reply.text);
-
-                          if (requestType["type"].toLowerCase() == "write") {
-                            print("Its type Write");
-                            final data = Memories(
-                              data: requestType["data"],
-                              time: DateTime.now().millisecondsSinceEpoch,
-                            );
-                            db.createMemory(data);
-                            showResponse("Added: ${requestType["data"]}");
-                          }
-
-                          if (requestType["type"].toLowerCase() == "read") {
-                            final memories = await db.getMemories();
-                            final allmemo = await getMemoriesString(memories);
-
-                            if (allmemo.length < 15000) {
-                              print("length is okay");
-                              final filterPrompt = memoryFindingPrompt
-                                  .replaceFirst("{{memory_list}}", "${allmemo}")
-                                  .replaceAll(
-                                    "{{user_request}}",
-                                    "${prompt.text}",
-                                  );
-                              final reply = await conversation!.sendMessage(
-                                filterPrompt,
-                              );
-                              final filteredMemory = jsonifyResponse(
-                                reply.text,
-                              );
-
-                              showResponse(filteredMemory["response"]);
-                            } else {
-                              print("using above 15,000 technique");
-                              final searchKeywords = requestType["data"].split(
-                                " ",
-                              );
-                              final filteredMemories =
-                                  await getKeywordMatchingMemories(
-                                    searchKeywords,
-                                  );
-                              final allmemostring = await getMemoriesString(
-                                filteredMemories,
-                              );
-                              final filterPrompt = memoryFindingPrompt
-                                  .replaceFirst(
-                                    "{{memory_list}}",
-                                    "${allmemostring}",
-                                  )
-                                  .replaceAll(
-                                    "{{user_request}}",
-                                    "${prompt.text}",
-                                  );
-                              final reply = await conversation!.sendMessage(
-                                filterPrompt,
-                              );
-                              final filteredMemory = jsonifyResponse(
-                                reply.text,
-                              );
-                              if (filteredMemory["response"].contains(
-                                "could not find any relevant memory",
-                              )) {
-                                setState(() {
-                                  isDeeperSearch = true;
-                                });
+            isModelDownloaded
+                ? Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: TextFormField(
+                      controller: prompt,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        label: Text("Prompt"),
+                      ),
+                    ),
+                  )
+                : SizedBox.shrink(),
+            isModelDownloaded
+                ? ElevatedButton(
+                    onPressed: isLoading | isGenerating
+                        ? null
+                        : () async {
+                            if (prompt.text != "") {
+                              setState(() {
+                                isGenerating = true;
+                              });
+                              if (isLoading || conversation == null) {
+                                showResponse("Model still loading...");
+                                return;
                               }
-                              showResponse(filteredMemory["response"]);
-                            }
-                          }
+                              final structuredPrompt =
+                                  "${classificationPrompt}${prompt.text}";
+                              try {
+                                final reply = await conversation!.sendMessage(
+                                  structuredPrompt,
+                                );
+                                final requestType = jsonifyResponse(reply.text);
 
-                          // showResponse(reply.text);
-                        } catch (e) {
-                          showResponse(e.toString());
-                        }
-                      } else {
-                        SnackbarMessage.show(context, "Enter A Prompt");
-                      }
-                    },
-              child: Text(isLoading ? "Loading model..." : "Send"),
-            ),
+                                if (requestType["type"].toLowerCase() ==
+                                    "write") {
+                                  print("Its type Write");
+                                  final data = Memories(
+                                    data: requestType["data"],
+                                    time: DateTime.now().millisecondsSinceEpoch,
+                                  );
+                                  db.createMemory(data);
+                                  showResponse("Added: ${requestType["data"]}");
+                                }
+
+                                if (requestType["type"].toLowerCase() ==
+                                    "read") {
+                                  final memories = await db.getMemories();
+                                  final allmemo = await getMemoriesString(
+                                    memories,
+                                  );
+
+                                  if (allmemo.length < 15000) {
+                                    print("length is okay");
+                                    final filterPrompt = memoryFindingPrompt
+                                        .replaceFirst(
+                                          "{{memory_list}}",
+                                          "${allmemo}",
+                                        )
+                                        .replaceAll(
+                                          "{{user_request}}",
+                                          "${prompt.text}",
+                                        );
+                                    final reply = await conversation!
+                                        .sendMessage(filterPrompt);
+                                    final filteredMemory = jsonifyResponse(
+                                      reply.text,
+                                    );
+
+                                    showResponse(filteredMemory["response"]);
+                                  } else {
+                                    print("using above 15,000 technique");
+                                    final searchKeywords = requestType["data"]
+                                        .split(" ");
+                                    final filteredMemories =
+                                        await getKeywordMatchingMemories(
+                                          searchKeywords,
+                                        );
+                                    final allmemostring =
+                                        await getMemoriesString(
+                                          filteredMemories,
+                                        );
+                                    final filterPrompt = memoryFindingPrompt
+                                        .replaceFirst(
+                                          "{{memory_list}}",
+                                          "${allmemostring}",
+                                        )
+                                        .replaceAll(
+                                          "{{user_request}}",
+                                          "${prompt.text}",
+                                        );
+                                    final reply = await conversation!
+                                        .sendMessage(filterPrompt);
+                                    final filteredMemory = jsonifyResponse(
+                                      reply.text,
+                                    );
+                                    if (filteredMemory["response"].contains(
+                                      "could not find any relevant memory",
+                                    )) {
+                                      setState(() {
+                                        isDeeperSearch = true;
+                                      });
+                                    }
+                                    showResponse(filteredMemory["response"]);
+                                  }
+                                }
+
+                                // showResponse(reply.text);
+                              } catch (e) {
+                                showResponse(e.toString());
+                              }
+                            } else {
+                              SnackbarMessage.show(context, "Enter A Prompt");
+                            }
+                          },
+                    child: Text(isLoading ? "Loading model..." : "Send"),
+                  )
+                : SizedBox.shrink(),
             isGenerating
                 ? Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -413,6 +475,16 @@ MEMORIES:
                       ),
                     ),
                   ),
+            isModelDownloaded
+                ? SizedBox.shrink()
+                : !isDownloading
+                ? ElevatedButton(
+                    onPressed: () {
+                      downloadModel();
+                    },
+                    child: Text("Download Model"),
+                  )
+                : SizedBox.shrink(),
             isDeeperSearch
                 ? Column(
                     children: [
