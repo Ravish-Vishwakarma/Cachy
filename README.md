@@ -1,5 +1,7 @@
 # CACHY
-![Banner Image](resources/Banner.png)
+<p align="center">
+  <img src="resources/Banner.png" alt="Banner Image">
+</p>
 
 # ABOUT
 Cachy is a personl AI based memory agent, it can store and retrive your memories and present them to you.
