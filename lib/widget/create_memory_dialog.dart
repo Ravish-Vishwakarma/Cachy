@@ -1,6 +1,7 @@
 import 'package:cachy/widget/snackbar_message.dart';
 import 'package:flutter/material.dart';
 
+/// Dialog for manually creating a new memory entry.
 class CreateMemoryDialog extends StatelessWidget {
   final Function(String memory) onSave;
   const CreateMemoryDialog({super.key, required this.onSave});

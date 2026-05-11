@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Confirmation dialog shown before deleting a memory.
 class DeleteConformDialog extends StatelessWidget {
   final Function onDelete;
   const DeleteConformDialog({super.key, required this.onDelete});

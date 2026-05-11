@@ -6,6 +6,8 @@ import 'package:cachy/widget/memory_detail.dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+/// Page that lists all stored memories with search, create, and delete
+/// capabilities. Accessed via the "List" tab in the bottom navigation bar.
 class DatabasePage extends StatefulWidget {
   const DatabasePage({super.key});
 
@@ -15,20 +17,36 @@ class DatabasePage extends StatefulWidget {
 
 class _DatabasePageState extends State<DatabasePage> {
   // ======================= VARIABLES ======================= //
+
+  /// Controller for the search text field.
   final TextEditingController searchController = TextEditingController();
+
+  /// Singleton database helper instance.
   final db = DatabaseHelper.instance;
+
+  /// Currently visible (filtered) list of memories displayed in the UI.
   List<Memory> memories = [];
+
+  /// Full cached list of all memories from the database.
   List<Memory> allMemories = [];
+
+  /// Whether the search bar is visible.
   bool showSearchBar = false;
+
+  /// Whether memories are currently being loaded from the database.
   bool isLoading = true;
 
   // ======================= FUNCTIONS ======================= //
+
+  /// Inserts a new [memory] string into the database.
   Future<void> createNewMemory(String memory) async {
     await db.createMemory(
       Memory(data: memory, time: DateTime.now().millisecondsSinceEpoch),
     );
   }
 
+  /// Filters [allMemories] by [query] (case-insensitive contains match)
+  /// and updates the displayed [memories] list.
   void searchMemories(String query) {
     final filtered = allMemories.where((memory) {
       return memory.data.toLowerCase().contains(query.toLowerCase());
@@ -39,6 +57,7 @@ class _DatabasePageState extends State<DatabasePage> {
     });
   }
 
+  /// Loads all memories from the database into [allMemories] and [memories].
   Future<void> loadMemories() async {
     setState(() {
       isLoading = true;
@@ -51,6 +70,7 @@ class _DatabasePageState extends State<DatabasePage> {
     });
   }
 
+  /// Deletes a memory by [id] and removes it from the displayed list at [index].
   Future<void> deleteMemory(int id, int index) async {
     await db.deleteMemory(id);
     setState(() {
@@ -58,6 +78,7 @@ class _DatabasePageState extends State<DatabasePage> {
     });
   }
 
+  /// Clears search, hides the search bar, and reloads all memories.
   Future<void> refreshMemories() async {
     searchController.clear();
     setState(() {

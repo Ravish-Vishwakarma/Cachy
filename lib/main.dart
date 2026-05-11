@@ -9,6 +9,7 @@ void main() async {
   runApp(const MyApp());
 }
 
+/// Root widget of the CACHY application.
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 

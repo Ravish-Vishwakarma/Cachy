@@ -2,6 +2,7 @@ import 'package:cachy/model/memories_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+/// Dialog showing the full text and formatted timestamp of a single memory.
 class MemoryDetailDialog extends StatelessWidget {
   final Memory memory;
   const MemoryDetailDialog({super.key, required this.memory});

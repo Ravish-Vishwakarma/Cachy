@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+/// Bottom navigation bar with two tabs: AI (chat) and List (memories).
 class MyBottomNavBar extends StatefulWidget {
   final int currentIndex;
   final Function(int) onTap;
