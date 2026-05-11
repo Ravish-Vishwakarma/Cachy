@@ -31,21 +31,21 @@ class DatabaseHelper {
     ''');
   }
 
-  Future<int> createMemory(Memories memory) async {
+  Future<int> createMemory(Memory memory) async {
     final db = await instance.database;
 
     return await db.insert('memories', memory.toMap());
   }
 
-  Future<List<Memories>> getMemories() async {
+  Future<List<Memory>> getMemories() async {
     final db = await instance.database;
 
     final result = await db.query('memories');
 
-    return result.map((json) => Memories.fromMap(json)).toList();
+    return result.map((json) => Memory.fromMap(json)).toList();
   }
 
-  Future<int> updateMemory(Memories memory) async {
+  Future<int> updateMemory(Memory memory) async {
     final db = await instance.database;
 
     return await db.update(
@@ -62,7 +62,7 @@ class DatabaseHelper {
     return await db.delete('memories', where: 'id = ?', whereArgs: [id]);
   }
 
-  Future<List<Memories>> searchMemories(List<String> keywords) async {
+  Future<List<Memory>> searchMemories(List<String> keywords) async {
     final db = await instance.database;
 
     if (keywords.isEmpty) {
@@ -79,7 +79,7 @@ class DatabaseHelper {
       whereArgs: whereArgs,
     );
 
-    return result.map((json) => Memories.fromMap(json)).toList();
+    return result.map((json) => Memory.fromMap(json)).toList();
   }
 
   Future<int> getMemoriesCount() async {
@@ -92,7 +92,7 @@ class DatabaseHelper {
 
   Future close() async {
     final db = await instance.database;
-
-    db.close();
+    await db.close();
+    _database = null;
   }
 }

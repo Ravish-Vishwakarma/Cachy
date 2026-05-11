@@ -17,14 +17,15 @@ class _DatabasePageState extends State<DatabasePage> {
   // ======================= VARIABLES ======================= //
   final TextEditingController searchController = TextEditingController();
   final db = DatabaseHelper.instance;
-  List<Memories> memories = [];
-  List<Memories> allMemories = [];
+  List<Memory> memories = [];
+  List<Memory> allMemories = [];
   bool showSearchBar = false;
+  bool isLoading = true;
 
   // ======================= FUNCTIONS ======================= //
-  void createNewMemory(String memory) async {
+  Future<void> createNewMemory(String memory) async {
     await db.createMemory(
-      Memories(data: memory, time: DateTime.now().millisecondsSinceEpoch),
+      Memory(data: memory, time: DateTime.now().millisecondsSinceEpoch),
     );
   }
 
@@ -39,17 +40,18 @@ class _DatabasePageState extends State<DatabasePage> {
   }
 
   Future<void> loadMemories() async {
-    final data = await db.getMemories();
-
     setState(() {
-      setState(() {
-        allMemories = data;
-        memories = data;
-      });
+      isLoading = true;
+    });
+    final data = await db.getMemories();
+    setState(() {
+      allMemories = data;
+      memories = data;
+      isLoading = false;
     });
   }
 
-  Future<void> deleteMemory(id, index) async {
+  Future<void> deleteMemory(int id, int index) async {
     await db.deleteMemory(id);
     setState(() {
       memories.removeAt(index);
@@ -66,8 +68,14 @@ class _DatabasePageState extends State<DatabasePage> {
 
   @override
   void initState() {
-    loadMemories();
     super.initState();
+    loadMemories();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -120,7 +128,9 @@ class _DatabasePageState extends State<DatabasePage> {
                 ),
               ),
             Expanded(
-              child: memories.isNotEmpty
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : memories.isNotEmpty
                   ? ListView.builder(
                       padding: const EdgeInsets.only(bottom: 100),
                       itemCount: memories.length,
@@ -144,7 +154,7 @@ class _DatabasePageState extends State<DatabasePage> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(
-                              "${DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time))}",
+                              DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time)),
                             ),
                             trailing: IconButton(
                               onPressed: () {
@@ -153,7 +163,9 @@ class _DatabasePageState extends State<DatabasePage> {
                                   builder: (context) {
                                     return DeleteConformDialog(
                                       onDelete: () {
-                                        deleteMemory(memories[index].id, index);
+                                        if (memories[index].id != null) {
+                                          deleteMemory(memories[index].id!, index);
+                                        }
                                       },
                                     );
                                   },
@@ -192,8 +204,8 @@ class _DatabasePageState extends State<DatabasePage> {
             context: context,
             builder: (context) {
               return CreateMemoryDialog(
-                onSave: (memory) {
-                  createNewMemory(memory);
+                onSave: (memory) async {
+                  await createNewMemory(memory);
                   loadMemories();
                 },
               );

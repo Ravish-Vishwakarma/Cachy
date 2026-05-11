@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class MemoryDetailDialog extends StatelessWidget {
-  final Memories memory;
+  final Memory memory;
   const MemoryDetailDialog({super.key, required this.memory});
 
   @override

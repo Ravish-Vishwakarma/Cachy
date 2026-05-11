@@ -7,7 +7,7 @@ class CreateMemoryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var memoryController = TextEditingController();
+    final memoryController = TextEditingController();
     return AlertDialog(
       title: const Text('New Memory'),
       content: TextFormField(
@@ -29,9 +29,11 @@ class CreateMemoryDialog extends StatelessWidget {
           onPressed: () {
             if (memoryController.text != "") {
               onSave(memoryController.text);
+              Navigator.pop(context);
               SnackbarMessage.show(context, "Added");
+            } else {
+              Navigator.pop(context);
             }
-            Navigator.pop(context);
           },
           child: Text("Save"),
         ),

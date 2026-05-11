@@ -1,13 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:cachy/database/database_helper.dart';
 import 'package:cachy/model/memories_model.dart';
 import 'package:cachy/widget/snackbar_message.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_litert_lm/flutter_litert_lm.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+
+const String _modelUrl =
+    "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm";
+const int _expectedModelSize = 2583085056; // 2.58 GB
 
 class AIPage extends StatefulWidget {
   const AIPage({super.key});
@@ -60,9 +65,13 @@ MEMORIES:
   bool isPermissionGranted = true;
   bool isModelDownloaded = true;
   bool isDownloading = false;
+  bool isPaused = false;
   bool isGenerating = false;
   bool isLoading = true;
+  int downloadProgress = 0;
+  String? downloadTaskId;
   int memoriesCount = 0;
+  Timer? _downloadTimer;
 
   // ======================= FUNCTIONS ======================= //
 
@@ -78,41 +87,49 @@ MEMORIES:
   // Used for granting permission to read the downloaded model file
   Future<void> requestPermission() async {
     var status = await Permission.manageExternalStorage.request();
-    if (status.isDenied) {
+    if (status.isGranted) {
+      setState(() {
+        isPermissionGranted = true;
+      });
+    } else if (status.isDenied) {
       setState(() {
         isPermissionGranted = false;
       });
-    }
-
-    if (status.isPermanentlyDenied) {
+    } else if (status.isPermanentlyDenied) {
+      setState(() {
+        isPermissionGranted = false;
+      });
       openAppSettings();
     }
   }
 
   // Used to convert json string from model to json type
   dynamic jsonifyResponse(String response) {
-    final cleanedResponse = response
-        .replaceFirst(RegExp(r'^```json\s*'), '')
-        .replaceFirst(RegExp(r'```$'), '')
-        .trim();
+    try {
+      final cleanedResponse = response
+          .replaceFirst(RegExp(r'^```json\s*'), '')
+          .replaceFirst(RegExp(r'```$'), '')
+          .trim();
 
-    return jsonDecode(cleanedResponse);
+      return jsonDecode(cleanedResponse);
+    } catch (e) {
+      return null;
+    }
   }
 
-  // Used to search for memories with maching keywords
-  getKeywordMatchingMemories(keywords) async {
-    final filteredMemories = db.searchMemories(keywords);
-    return filteredMemories;
+  // Used to search for memories with matching keywords
+  Future<List<Memory>> getKeywordMatchingMemories(List<String> keywords) async {
+    return await db.searchMemories(keywords);
   }
 
   // Used to convert Memories into formatted string to feed in AI models
-  Future<String> getMemoriesString(memories) async {
+  Future<String> getMemoriesString(List<Memory> memories) async {
     return memories
         .asMap()
         .entries
         .map((entry) {
           int index = entry.key + 1;
-          Memories memory = entry.value;
+          Memory memory = entry.value;
 
           return "$index. ${memory.data}";
         })
@@ -120,50 +137,78 @@ MEMORIES:
   }
 
   // Used for loading the model from the app directory or copy it from the downloads folder
+  String get localModelPath => "$_appDirPath/gemma-4-E2B-it.litertlm";
+
+  String _appDirPath = "";
+
   Future<void> loadModel() async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
-
-      final localModelPath = "${appDir.path}/gemma-4-E2B-it.litertlm";
+      _appDirPath = appDir.path;
 
       final localModelFile = File(localModelPath);
 
-      if (!await localModelFile.exists()) {
-        final sourceFile = File(
-          "/storage/emulated/0/Download/gemma-4-E2B-it.litertlm",
-        );
-
-        await sourceFile.copy(localModelPath);
+      if (await localModelFile.exists()) {
+        final fileSize = await localModelFile.length();
+        if (fileSize < _expectedModelSize * 0.95) {
+          await localModelFile.delete();
+          setState(() {
+            isModelDownloaded = false;
+          });
+          showResponse(
+            "Model file is corrupted ($fileSize of $_expectedModelSize bytes). Please re-download.",
+          );
+          return;
+        }
       }
 
-      engine = await LiteLmEngine.create(
-        LiteLmEngineConfig(
-          modelPath: localModelPath,
-          backend: LiteLmBackend.cpu,
-        ),
-      );
+      if (!await localModelFile.exists()) {
+        if (Platform.isAndroid) {
+          final sourceFile = File(
+            "/storage/emulated/0/Download/gemma-4-E2B-it.litertlm",
+          );
 
-      conversation = await engine!.createConversation(
-        LiteLmConversationConfig(
-          systemInstruction: "You are a helpful assistant.",
-        ),
-      );
+          if (await sourceFile.exists()) {
+            final srcSize = await sourceFile.length();
+            if (srcSize >= _expectedModelSize * 0.95) {
+              await sourceFile.copy(localModelPath);
+            }
+          }
+        }
+      }
 
-      setState(() {
-        isLoading = false;
-      });
+      if (await localModelFile.exists()) {
+        engine = await LiteLmEngine.create(
+          LiteLmEngineConfig(
+            modelPath: localModelPath,
+            backend: LiteLmBackend.cpu,
+          ),
+        );
+
+        conversation = await engine!.createConversation(
+          LiteLmConversationConfig(
+            systemInstruction: "You are a helpful assistant.",
+          ),
+        );
+
+        setState(() {
+          isLoading = false;
+          isModelDownloaded = true;
+          response = "";
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          isModelDownloaded = false;
+        });
+        showResponse("Model not found. Please download it.");
+      }
     } catch (e) {
       setState(() {
         isLoading = false;
+        isModelDownloaded = false;
       });
-
-      // Checks if the model is downloaded or not?
-      if (e.toString().contains("PathNotFoundException: Cannot copy file to")) {
-        showResponse("Model Not Downloaded");
-        setState(() {
-          isModelDownloaded = false;
-        });
-      }
+      showResponse("Error loading model: ${e.toString()}");
     }
   }
 
@@ -171,39 +216,107 @@ MEMORIES:
   Future<void> downloadModel() async {
     setState(() {
       isDownloading = true;
+      downloadProgress = 0;
+      response = "";
     });
+
+    // Start polling for progress
+    _startDownloadPolling();
+
     final appDir = await getApplicationDocumentsDirectory();
 
-    final localModelPath = "${appDir.path}/gemma-4-E2B-it.litertlm";
-
-    const modelUrl =
-        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm";
-
-    final dio = Dio();
-
     try {
-      await dio.download(
-        modelUrl,
-        localModelPath,
+      // Remove any existing file to avoid name conflicts
+      final existing = File("${appDir.path}/gemma-4-E2B-it.litertlm");
+      if (await existing.exists()) {
+        await existing.delete();
+      }
 
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = (received / total * 100).toStringAsFixed(0);
-
-            // print("Progress: $progress%");
-            showResponse("Downloading Model: $progress%");
-          }
-        },
-
-        options: Options(
-          responseType: ResponseType.bytes,
-          followRedirects: true,
-          receiveTimeout: const Duration(hours: 2),
-        ),
+      final taskId = await FlutterDownloader.enqueue(
+        url: _modelUrl,
+        savedDir: appDir.path,
+        fileName: "gemma-4-E2B-it.litertlm",
+        showNotification: true,
+        openFileFromNotification: false,
       );
+
+      if (taskId != null) {
+        downloadTaskId = taskId;
+      }
     } catch (e) {
-      showResponse(e.toString());
+      _downloadTimer?.cancel();
+      setState(() {
+        isDownloading = false;
+        isPaused = false;
+      });
+      showResponse("Download error: ${e.toString()}");
     }
+  }
+
+  void _startDownloadPolling() {
+    _downloadTimer?.cancel();
+    _downloadTimer = Timer.periodic(Duration(seconds: 2), (_) async {
+      if (downloadTaskId == null) return;
+      final tasks = await FlutterDownloader.loadTasks();
+      if (tasks == null) return;
+
+      for (final task in tasks) {
+        if (task.taskId == downloadTaskId) {
+          setState(() {
+            downloadProgress = task.progress;
+            isPaused = task.status == DownloadTaskStatus.paused;
+          });
+
+          if (task.status == DownloadTaskStatus.complete) {
+            _downloadTimer?.cancel();
+            setState(() {
+              isDownloading = false;
+              isPaused = false;
+              downloadTaskId = null;
+            });
+            loadModel();
+          } else if (task.status == DownloadTaskStatus.failed ||
+              task.status == DownloadTaskStatus.canceled) {
+            _downloadTimer?.cancel();
+            setState(() {
+              isDownloading = false;
+              isPaused = false;
+              downloadTaskId = null;
+            });
+            showResponse("Download failed. Please try again.");
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  // Pauses the current download
+  Future<void> pauseDownload() async {
+    if (downloadTaskId != null) {
+      await FlutterDownloader.pause(taskId: downloadTaskId!);
+    }
+  }
+
+  // Resumes the paused download
+  Future<void> resumeDownload() async {
+    if (downloadTaskId != null) {
+      await FlutterDownloader.resume(taskId: downloadTaskId!);
+    }
+  }
+
+  // Cancels the current download
+  Future<void> cancelDownload() async {
+    if (downloadTaskId != null) {
+      await FlutterDownloader.cancel(taskId: downloadTaskId!);
+    }
+    _downloadTimer?.cancel();
+    setState(() {
+      isDownloading = false;
+      isPaused = false;
+      downloadProgress = 0;
+      downloadTaskId = null;
+    });
   }
 
   // Used for searching bigger chunks of memories for a deeper search
@@ -231,25 +344,28 @@ MEMORIES:
   }
 
   // Search every memory to find the answer
-  deeperSearch() async {
-    final memories = await db.getMemories();
+  Future<void> deeperSearch() async {
+    try {
+      final memories = await db.getMemories();
+      final allmemo = await getMemoriesString(memories);
+      List<String> listOfMemories = splitIntoChunks(allmemo);
 
-    final allmemo = await getMemoriesString(memories);
-
-    List<String> listOfMemories = splitIntoChunks(allmemo);
-
-    for (int i = 0; i < listOfMemories.length; i++) {
-      final filterPrompt = memoryFindingPrompt
-          .replaceFirst("{{memory_list}}", "${listOfMemories[i]}")
-          .replaceAll("{{user_request}}", "${prompt.text}");
-      final reply = await conversation!.sendMessage(filterPrompt);
-      final filteredMemory = jsonifyResponse(reply.text);
-      if (!filteredMemory["response"].contains(
-        "could not find any relevant memory",
-      )) {
-        showResponse(filteredMemory["response"]);
-        break;
+      for (int i = 0; i < listOfMemories.length; i++) {
+        final filterPrompt = memoryFindingPrompt
+            .replaceFirst("{{memory_list}}", listOfMemories[i])
+            .replaceAll("{{user_request}}", prompt.text);
+        final reply = await conversation!.sendMessage(filterPrompt);
+        final filteredMemory = jsonifyResponse(reply.text);
+        if (filteredMemory != null &&
+            !filteredMemory["response"].contains(
+              "could not find any relevant memory",
+            )) {
+          showResponse(filteredMemory["response"]);
+          break;
+        }
       }
+    } catch (e) {
+      showResponse("Search error: ${e.toString()}");
     }
   }
 
@@ -270,6 +386,16 @@ MEMORIES:
   }
 
   final db = DatabaseHelper.instance;
+
+  @override
+  void dispose() {
+    prompt.dispose();
+    _downloadTimer?.cancel();
+    engine = null;
+    conversation = null;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -279,7 +405,7 @@ MEMORIES:
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 0, 10, 0),
             child: Text(
-              "TOTAL MEMORIES: ${memoriesCount}",
+              "TOTAL MEMORIES: $memoriesCount",
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -366,21 +492,27 @@ MEMORIES:
                                 return;
                               }
                               final structuredPrompt =
-                                  "${classificationPrompt}${prompt.text}";
+                                  "$classificationPrompt${prompt.text}";
                               try {
                                 final reply = await conversation!.sendMessage(
                                   structuredPrompt,
                                 );
                                 final requestType = jsonifyResponse(reply.text);
 
+                                if (requestType == null) {
+                                  showResponse(
+                                    "Failed to understand the request. Please try again.",
+                                  );
+                                  return;
+                                }
+
                                 if (requestType["type"].toLowerCase() ==
                                     "write") {
-                                  print("Its type Write");
-                                  final data = Memories(
+                                  final data = Memory(
                                     data: requestType["data"],
                                     time: DateTime.now().millisecondsSinceEpoch,
                                   );
-                                  db.createMemory(data);
+                                  await db.createMemory(data);
                                   showResponse("Added: ${requestType["data"]}");
                                 }
 
@@ -392,15 +524,15 @@ MEMORIES:
                                   );
 
                                   if (allmemo.length < 15000) {
-                                    print("length is okay");
+                                    // length is okay
                                     final filterPrompt = memoryFindingPrompt
                                         .replaceFirst(
                                           "{{memory_list}}",
-                                          "${allmemo}",
+                                            allmemo,
                                         )
                                         .replaceAll(
                                           "{{user_request}}",
-                                          "${prompt.text}",
+                                          prompt.text,
                                         );
                                     final reply = await conversation!
                                         .sendMessage(filterPrompt);
@@ -408,41 +540,50 @@ MEMORIES:
                                       reply.text,
                                     );
 
-                                    showResponse(filteredMemory["response"]);
+                                    showResponse(
+                                      filteredMemory != null
+                                          ? filteredMemory["response"]
+                                          : "No relevant memory found.",
+                                    );
                                   } else {
-                                    print("using above 15,000 technique");
+                                    // above 15,000 technique
                                     final searchKeywords = requestType["data"]
                                         .split(" ");
                                     final filteredMemories =
                                         await getKeywordMatchingMemories(
                                           searchKeywords,
                                         );
-                                    final allmemostring =
+                                    final allMemoString =
                                         await getMemoriesString(
                                           filteredMemories,
                                         );
                                     final filterPrompt = memoryFindingPrompt
                                         .replaceFirst(
                                           "{{memory_list}}",
-                                          "${allmemostring}",
+                                          allMemoString,
                                         )
                                         .replaceAll(
                                           "{{user_request}}",
-                                          "${prompt.text}",
+                                          prompt.text,
                                         );
                                     final reply = await conversation!
                                         .sendMessage(filterPrompt);
                                     final filteredMemory = jsonifyResponse(
                                       reply.text,
                                     );
-                                    if (filteredMemory["response"].contains(
-                                      "could not find any relevant memory",
-                                    )) {
+                                    if (filteredMemory != null &&
+                                        filteredMemory["response"].contains(
+                                          "could not find any relevant memory",
+                                        )) {
                                       setState(() {
                                         isDeeperSearch = true;
                                       });
                                     }
-                                    showResponse(filteredMemory["response"]);
+                                    showResponse(
+                                      filteredMemory != null
+                                          ? filteredMemory["response"]
+                                          : "No relevant memory found.",
+                                    );
                                   }
                                 }
 
@@ -488,7 +629,43 @@ MEMORIES:
                     },
                     child: Text("Download Model"),
                   )
-                : SizedBox.shrink(),
+                : Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        LinearProgressIndicator(
+                          value: downloadProgress > 0
+                              ? downloadProgress / 100.0
+                              : null,
+                        ),
+                        SizedBox(height: 8),
+                        Text("$downloadProgress%"),
+                        SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            isPaused
+                                ? ElevatedButton(
+                                    onPressed: resumeDownload,
+                                    child: Text("Resume"),
+                                  )
+                                : ElevatedButton(
+                                    onPressed: pauseDownload,
+                                    child: Text("Pause"),
+                                  ),
+                            SizedBox(width: 12),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: cancelDownload,
+                              child: Text("Cancel"),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
             isDeeperSearch
                 ? Column(
                     children: [
