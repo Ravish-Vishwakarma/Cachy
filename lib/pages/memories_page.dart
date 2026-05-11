@@ -122,43 +122,46 @@ class _DatabasePageState extends State<DatabasePage> {
               child: memories.isNotEmpty
                   ? ListView.builder(
                       padding: const EdgeInsets.only(bottom: 100),
-                      itemCount: memories.length, // Total number of items
+                      itemCount: memories.length,
                       itemBuilder: (BuildContext context, int index) {
-                        return ListTile(
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) {
-                                return MemoryDetailDialog(
-                                  memory: memories[index],
-                                );
-                              },
-                            );
-                          },
-
-                          title: Text(
-                            memories[index].data,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            "${DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time))}",
-                          ),
-                          trailing: IconButton(
-                            onPressed: () {
+                        return Card(
+                          color: Colors.grey[200],
+                          child: ListTile(
+                            onTap: () {
                               showDialog(
                                 context: context,
                                 builder: (context) {
-                                  return DeleteConformDialog(
-                                    onDelete: () {
-                                      deleteMemory(memories[index].id, index);
-                                    },
+                                  return MemoryDetailDialog(
+                                    memory: memories[index],
                                   );
                                 },
                               );
                             },
-                            icon: Icon(
-                              Icons.delete_rounded,
-                              color: Colors.red[400],
+
+                            title: Text(
+                              memories[index].data,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              "${DateFormat('hh:mmaa dd/MMM/yyyy').format(DateTime.fromMillisecondsSinceEpoch(memories[index].time))}",
+                            ),
+                            trailing: IconButton(
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) {
+                                    return DeleteConformDialog(
+                                      onDelete: () {
+                                        deleteMemory(memories[index].id, index);
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                              icon: Icon(
+                                Icons.delete_rounded,
+                                color: Colors.red[400],
+                              ),
                             ),
                           ),
                         );

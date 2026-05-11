@@ -11,6 +11,7 @@ class CreateMemoryDialog extends StatelessWidget {
     return AlertDialog(
       title: const Text('New Memory'),
       content: TextFormField(
+        autofocus: true,
         controller: memoryController,
         decoration: InputDecoration(
           labelText: "memory",
