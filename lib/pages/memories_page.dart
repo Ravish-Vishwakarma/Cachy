@@ -14,10 +14,14 @@ class DatabasePage extends StatefulWidget {
 }
 
 class _DatabasePageState extends State<DatabasePage> {
+  // ======================= VARIABLES ======================= //
   final TextEditingController searchController = TextEditingController();
   final db = DatabaseHelper.instance;
   List<Memories> memories = [];
   List<Memories> allMemories = [];
+  bool showSearchBar = false;
+
+  // ======================= FUNCTIONS ======================= //
   void createNewMemory(String memory) async {
     await db.createMemory(
       Memories(data: memory, time: DateTime.now().millisecondsSinceEpoch),
@@ -45,7 +49,7 @@ class _DatabasePageState extends State<DatabasePage> {
     });
   }
 
-  void deleteMemory(id, index) async {
+  Future<void> deleteMemory(id, index) async {
     await db.deleteMemory(id);
     setState(() {
       memories.removeAt(index);
@@ -65,9 +69,6 @@ class _DatabasePageState extends State<DatabasePage> {
     loadMemories();
     super.initState();
   }
-
-  String selectedItem = 'None';
-  var showSearchBar = false;
 
   @override
   Widget build(BuildContext context) {

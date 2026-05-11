@@ -11,13 +11,10 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  // ======================= VARIABLES ======================= //
   int selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-  }
-
+  // ======================= FUNCTIONS ======================= //
   void changePage(int index) {
     setState(() {
       selectedIndex = index;
@@ -27,10 +24,12 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Bottom Navigation Bar
       bottomNavigationBar: MyBottomNavBar(
         currentIndex: selectedIndex,
         onTap: changePage,
       ),
+      // AI and List Pages, Used Indexes Stack so that state don't reload every time the page is switched
       body: IndexedStack(
         index: selectedIndex,
         children: const [AIPage(), DatabasePage()],

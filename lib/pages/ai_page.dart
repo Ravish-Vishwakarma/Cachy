@@ -17,6 +17,7 @@ class AIPage extends StatefulWidget {
 }
 
 class _AIPageState extends State<AIPage> {
+  // ======================= VARIABLES ======================= //
   final classificationPrompt =
       '''You are a memory classifier. Determine whether the user wants to READ from memory/database or WRITE to memory/database.
 
@@ -51,10 +52,21 @@ MEMORIES:
 {{memory_list}}''';
   LiteLmEngine? engine;
   LiteLmConversation? conversation;
-  bool isGenerating = false;
-  bool isLoading = true;
+
   var prompt = TextEditingController();
   var response = "";
+
+  bool isDeeperSearch = false;
+  bool isPermissionGranted = true;
+  bool isModelDownloaded = true;
+  bool isDownloading = false;
+  bool isGenerating = false;
+  bool isLoading = true;
+  int memoriesCount = 0;
+
+  // ======================= FUNCTIONS ======================= //
+
+  // Used for showing any string in the response area of the app
   void showResponse(String resp) {
     setState(() {
       response = resp;
@@ -63,19 +75,10 @@ MEMORIES:
     prompt.clear();
   }
 
-  bool isDeeperSearch = false;
-  bool isPermissionGranted = true;
-  bool isModelDownloaded = true;
-  bool isDownloading = false;
+  // Used for granting permission to read the downloaded model file
   Future<void> requestPermission() async {
     var status = await Permission.manageExternalStorage.request();
-
-    if (status.isGranted) {
-      print("Permission Granted");
-    }
-
     if (status.isDenied) {
-      print("Permission Denied");
       setState(() {
         isPermissionGranted = false;
       });
@@ -86,6 +89,7 @@ MEMORIES:
     }
   }
 
+  // Used to convert json string from model to json type
   dynamic jsonifyResponse(String response) {
     final cleanedResponse = response
         .replaceFirst(RegExp(r'^```json\s*'), '')
@@ -95,11 +99,13 @@ MEMORIES:
     return jsonDecode(cleanedResponse);
   }
 
+  // Used to search for memories with maching keywords
   getKeywordMatchingMemories(keywords) async {
     final filteredMemories = db.searchMemories(keywords);
     return filteredMemories;
   }
 
+  // Used to convert Memories into formatted string to feed in AI models
   Future<String> getMemoriesString(memories) async {
     return memories
         .asMap()
@@ -113,6 +119,7 @@ MEMORIES:
         .join("\n");
   }
 
+  // Used for loading the model from the app directory or copy it from the downloads folder
   Future<void> loadModel() async {
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -149,8 +156,8 @@ MEMORIES:
       setState(() {
         isLoading = false;
       });
-      // showResponse(e.toString());
 
+      // Checks if the model is downloaded or not?
       if (e.toString().contains("PathNotFoundException: Cannot copy file to")) {
         showResponse("Model Not Downloaded");
         setState(() {
@@ -160,6 +167,7 @@ MEMORIES:
     }
   }
 
+  // Downloads the model from hugging face into your app directory
   Future<void> downloadModel() async {
     setState(() {
       isDownloading = true;
@@ -174,9 +182,6 @@ MEMORIES:
     final dio = Dio();
 
     try {
-      print("Downloading to:");
-      print(localModelPath);
-
       await dio.download(
         modelUrl,
         localModelPath,
@@ -186,7 +191,7 @@ MEMORIES:
             final progress = (received / total * 100).toStringAsFixed(0);
 
             // print("Progress: $progress%");
-            showResponse("Downloaded: ${progress}%");
+            showResponse("Downloading Model: $progress%");
           }
         },
 
@@ -196,13 +201,12 @@ MEMORIES:
           receiveTimeout: const Duration(hours: 2),
         ),
       );
-
-      print("Download complete!");
     } catch (e) {
-      print("Download failed: $e");
+      showResponse(e.toString());
     }
   }
 
+  // Used for searching bigger chunks of memories for a deeper search
   List<String> splitIntoChunks(String text, {int maxLength = 10000}) {
     List<String> chunks = [];
 
@@ -226,6 +230,7 @@ MEMORIES:
     return chunks;
   }
 
+  // Search every memory to find the answer
   deeperSearch() async {
     final memories = await db.getMemories();
 
@@ -248,8 +253,7 @@ MEMORIES:
     }
   }
 
-  int memoriesCount = 0;
-
+  // Used for getting the total numbers of memories present in the app
   void getMemoriesCount() async {
     int count = await db.getMemoriesCount();
     setState(() {
