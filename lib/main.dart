@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       title: 'CACHY',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Color(0xFF093176)),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         textTheme: GoogleFonts.jetBrainsMonoTextTheme(),
       ),
       home: HomePage(),

@@ -107,6 +107,7 @@ MEMORIES:
   /// Timer that periodically checks download progress.
   Timer? _downloadTimer;
 
+  String runningTask = "Generating...";
   // ======================= FUNCTIONS ======================= //
 
   /// Displays [resp] in the response area of the app and clears the prompt.
@@ -114,6 +115,7 @@ MEMORIES:
     setState(() {
       response = resp;
       isGenerating = false;
+      runningTask = "Generating....";
     });
     prompt.clear();
   }
@@ -649,7 +651,9 @@ MEMORIES:
 
                                 if (requestType["type"].toLowerCase() ==
                                     "read") {
-                                  showResponse("Searching....");
+                                  setState(() {
+                                    runningTask = "Searching....";
+                                  });
                                   final memories = await db.getMemories();
                                   final allmemo = await getMemoriesString(
                                     memories,
@@ -727,16 +731,28 @@ MEMORIES:
                               SnackbarMessage.show(context, "Enter A Prompt");
                             }
                           },
-                    child: Text(isLoading ? "Loading model..." : "Send"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF093176),
+                      foregroundColor: Colors.white,
+                      textStyle: TextStyle(fontSize: 17),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(isLoading ? "Loading model..." : "Send"),
+                        SizedBox(width: 8),
+                        Icon(Icons.send),
+                      ],
+                    ),
                   )
                 : SizedBox.shrink(),
             isGenerating
                 ? Padding(
                     padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      "Generating...",
-                      style: TextStyle(fontSize: 20),
-                    ),
+                    child: Text(runningTask, style: TextStyle(fontSize: 20)),
                   )
                 : response == ""
                 ? SizedBox.shrink()
