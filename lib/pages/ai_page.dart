@@ -592,6 +592,8 @@ MEMORIES:
                 ? Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: TextFormField(
+                      maxLines: null,
+                      textInputAction: TextInputAction.done,
                       controller: prompt,
                       decoration: InputDecoration(
                         border: OutlineInputBorder(),
@@ -605,6 +607,7 @@ MEMORIES:
                     onPressed: isLoading | isGenerating
                         ? null
                         : () async {
+                            FocusScope.of(context).unfocus();
                             if (prompt.text != "") {
                               setState(() {
                                 isGenerating = true;
@@ -640,6 +643,7 @@ MEMORIES:
 
                                 if (requestType["type"].toLowerCase() ==
                                     "read") {
+                                  showResponse("Searching....");
                                   final memories = await db.getMemories();
                                   final allmemo = await getMemoriesString(
                                     memories,
