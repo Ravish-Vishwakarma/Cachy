@@ -24,6 +24,10 @@ Cachy is a personal AI-based memory assistant that runs completely offline. It u
    - **Write** -- The model formalizes the text and saves it as a new memory in the local SQLite database.
    - **Read** -- The model extracts keywords, searches the database using SQL LIKE, feeds the results back to the model, and returns a natural-language answer.
 3. If no relevant memory is found with keywords and the database is large, the app offers a deeper search that iterates over all memories in chunks.
+<p align="center">
+  <img src="resources/Project Cachy.png" alt="CACHY Banner">
+</p>
+
 
 
 
