@@ -64,6 +64,7 @@ USER REQUEST:
 
 MEMORIES:
 {{memory_list}}''';
+
   /// The loaded LiteRT-LM engine instance.
   LiteLmEngine? engine;
 
@@ -434,34 +435,43 @@ MEMORIES:
                 style: TextStyle(fontSize: 14),
               ),
               const SizedBox(height: 16),
-              Text("How to use it", style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold
-              )),
+              Text(
+                "How to use it",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text("1. Type whatever is on your mind into the text box.\n"
-                  "2. Press Send.\n"
-                  "3. Cachy figures out what to do:\n"
-                  "   - If you are telling it something new, it saves it as a memory.\n"
-                  "   - If you are asking a question, it looks through your saved memories and answers you."),
+              Text(
+                "1. Type whatever is on your mind into the text box.\n"
+                "2. Press Send.\n"
+                "3. Cachy figures out what to do:\n"
+                "   - If you are telling it something new, it saves it as a memory.\n"
+                "   - If you are asking a question, it looks through your saved memories and answers you.",
+              ),
               const SizedBox(height: 16),
-              Text("Managing your memories", style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold
-              )),
+              Text(
+                "Managing your memories",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text("• Tap the List tab at the bottom to see all your memories.\n"
-                  "• Use the search bar to find specific ones.\n"
-                  "• Tap any memory to read it in full.\n"
-                  "• Add new memories manually using the + button.\n"
-                  "• Delete memories you no longer need."),
+              Text(
+                "• Tap the List tab at the bottom to see all your memories.\n"
+                "• Use the search bar to find specific ones.\n"
+                "• Tap any memory to read it in full.\n"
+                "• Add new memories manually using the + button.\n"
+                "• Delete memories you no longer need.",
+              ),
               const SizedBox(height: 16),
-              Text("About the AI model", style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold
-              )),
+              Text(
+                "About the AI model",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 8),
-              Text("• Cachy uses a smart AI model that runs entirely on your device.\n"
-                  "• The first time you open the app, you will need to download it (about 2.6 GB).\n"
-                  "• The download runs in the background -- you can check progress from your phone's notifications.\n"
-                  "• You can pause, resume, or cancel the download at any time."),
+              Text(
+                "• Cachy uses a smart AI model that runs entirely on your device.\n"
+                "• The first time you open the app, you will need to download it (about 2.6 GB).\n"
+                "• The download runs in the background -- you can check progress from your phone's notifications.\n"
+                "• You can pause, resume, or cancel the download at any time.",
+              ),
             ],
           ),
         ),
@@ -640,7 +650,7 @@ MEMORIES:
                                     final filterPrompt = memoryFindingPrompt
                                         .replaceFirst(
                                           "{{memory_list}}",
-                                            allmemo,
+                                          allmemo,
                                         )
                                         .replaceAll(
                                           "{{user_request}}",
