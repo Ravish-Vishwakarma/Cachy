@@ -68,9 +68,6 @@ MEMORIES:
   /// The loaded LiteRT-LM engine instance.
   LiteLmEngine? engine;
 
-  /// Active conversation session with the LLM.
-  LiteLmConversation? conversation;
-
   /// Controller for the user's text input field.
   var prompt = TextEditingController();
 
@@ -227,12 +224,6 @@ MEMORIES:
           LiteLmEngineConfig(
             modelPath: localModelPath,
             backend: LiteLmBackend.cpu,
-          ),
-        );
-
-        conversation = await engine!.createConversation(
-          LiteLmConversationConfig(
-            systemInstruction: "You are a helpful assistant.",
           ),
         );
 
@@ -396,6 +387,12 @@ MEMORIES:
   /// not find a matching result. Stops at the first chunk that contains
   /// a relevant memory.
   Future<void> deeperSearch() async {
+    if (engine == null) return;
+    final conv = await engine!.createConversation(
+      LiteLmConversationConfig(
+        systemInstruction: "You are a helpful assistant.",
+      ),
+    );
     try {
       final memories = await db.getMemories();
       final allmemo = await getMemoriesString(memories);
@@ -405,7 +402,7 @@ MEMORIES:
         final filterPrompt = memoryFindingPrompt
             .replaceFirst("{{memory_list}}", listOfMemories[i])
             .replaceAll("{{user_request}}", prompt.text);
-        final reply = await conversation!.sendMessage(filterPrompt);
+        final reply = await conv.sendMessage(filterPrompt);
         final filteredMemory = jsonifyResponse(reply.text);
         if (filteredMemory != null &&
             !filteredMemory["response"].contains(
@@ -417,6 +414,8 @@ MEMORIES:
       }
     } catch (e) {
       showResponse("Search error: ${e.toString()}");
+    } finally {
+      conv.dispose();
     }
   }
 
@@ -509,8 +508,8 @@ MEMORIES:
   void dispose() {
     prompt.dispose();
     _downloadTimer?.cancel();
+    engine?.dispose();
     engine = null;
-    conversation = null;
     super.dispose();
   }
 
@@ -609,17 +608,24 @@ MEMORIES:
                         : () async {
                             FocusScope.of(context).unfocus();
                             if (prompt.text != "") {
+                              final userInput = prompt.text;
                               setState(() {
                                 isGenerating = true;
                               });
-                              if (isLoading || conversation == null) {
+                              if (isLoading || engine == null) {
                                 showResponse("Model still loading...");
                                 return;
                               }
-                              final structuredPrompt =
-                                  "$classificationPrompt${prompt.text}";
+                              final conv = await engine!.createConversation(
+                                LiteLmConversationConfig(
+                                  systemInstruction:
+                                      "You are a helpful assistant.",
+                                ),
+                              );
                               try {
-                                final reply = await conversation!.sendMessage(
+                                final structuredPrompt =
+                                    "$classificationPrompt$userInput";
+                                final reply = await conv.sendMessage(
                                   structuredPrompt,
                                 );
                                 final requestType = jsonifyResponse(reply.text);
@@ -650,7 +656,6 @@ MEMORIES:
                                   );
 
                                   if (allmemo.length < 15000) {
-                                    // length is okay
                                     final filterPrompt = memoryFindingPrompt
                                         .replaceFirst(
                                           "{{memory_list}}",
@@ -658,10 +663,11 @@ MEMORIES:
                                         )
                                         .replaceAll(
                                           "{{user_request}}",
-                                          prompt.text,
+                                          userInput,
                                         );
-                                    final reply = await conversation!
-                                        .sendMessage(filterPrompt);
+                                    final reply = await conv.sendMessage(
+                                      filterPrompt,
+                                    );
                                     final filteredMemory = jsonifyResponse(
                                       reply.text,
                                     );
@@ -672,7 +678,6 @@ MEMORIES:
                                           : "No relevant memory found.",
                                     );
                                   } else {
-                                    // above 15,000 technique
                                     final searchKeywords = requestType["data"]
                                         .split(" ");
                                     final filteredMemories =
@@ -690,10 +695,11 @@ MEMORIES:
                                         )
                                         .replaceAll(
                                           "{{user_request}}",
-                                          prompt.text,
+                                          userInput,
                                         );
-                                    final reply = await conversation!
-                                        .sendMessage(filterPrompt);
+                                    final reply = await conv.sendMessage(
+                                      filterPrompt,
+                                    );
                                     final filteredMemory = jsonifyResponse(
                                       reply.text,
                                     );
@@ -712,10 +718,10 @@ MEMORIES:
                                     );
                                   }
                                 }
-
-                                // showResponse(reply.text);
                               } catch (e) {
                                 showResponse(e.toString());
+                              } finally {
+                                conv.dispose();
                               }
                             } else {
                               SnackbarMessage.show(context, "Enter A Prompt");
