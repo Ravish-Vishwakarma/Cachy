@@ -124,3 +124,14 @@ To switch to a different model, update `_modelUrl` and `_expectedModelSize` in `
 ## License
 
 This project is licensed under the MIT License -- see the LICENSE file for details.
+
+## Images
+<img width="2160" height="2400" alt="page1" src="https://github.com/user-attachments/assets/6374fb0c-18bb-4346-a9c9-ae24eae7aeb5" />
+
+<img width="2160" height="2400" alt="page2" src="https://github.com/user-attachments/assets/7afa4825-c462-4ae4-a6e4-3f61209e7399" />
+
+<img width="2160" height="2400" alt="page3" src="https://github.com/user-attachments/assets/dcbf3bb2-948f-4686-be17-7923505e6d17" />
+
+<img width="1080" height="2400" alt="page4" src="https://github.com/user-attachments/assets/28d50356-7fc9-4b4f-b411-4978cc27eff4" />
+
+
